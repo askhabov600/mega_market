@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Калькулятор рассрочки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page: #F6F6F2;
+    --card: #FFFFFF;
+    --field: #F4F3EE;
+    --ink: #16160F;
+    --ink-60: #82817A;
+    --line: #EBEAE3;
+    --accent: #0F6B4C;
+    --accent-soft: #EAF4EE;
+    --accent-line: #D8EADF;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; }
+  body{
+    background: var(--page);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding: 40px 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card{
+    width:100%;
+    max-width: 400px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    padding: 30px 26px 28px;
+    box-shadow: 0 1px 2px rgba(20,20,15,.04), 0 32px 64px -32px rgba(20,20,15,.22);
+  }
+
+  h1{
+    font-size: 19px;
+    font-weight: 700;
+    text-align: center;
+    margin: 0 0 22px;
+    letter-spacing: -0.01em;
+  }
+
+  /* segmented tabs */
+  .switch{
+    position: relative;
+    display:flex;
+    background: var(--field);
+    border-radius: 14px;
+    padding: 4px;
+    margin-bottom: 24px;
+  }
+  .switch-indicator{
+    position:absolute;
+    top:4px; bottom:4px; left:4px;
+    width: calc(50% - 4px);
+    background:#fff;
+    border-radius: 11px;
+    box-shadow: 0 1px 3px rgba(20,20,15,.10);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+  }
+  .switch.mode-without .switch-indicator{ transform: translateX(100%); }
+  .tab{
+    position:relative; z-index:1;
+    flex:1;
+    border:none; background:none;
+    padding: 11px 6px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-60);
+    cursor:pointer;
+    transition: color .2s ease;
+  }
+  .tab.active{ color: var(--ink); }
+
+  /* fields */
+  .field{ margin-bottom: 14px; }
+  .field label{
+    display:block;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-60);
+    margin-bottom: 7px;
+  }
+  .field-box{
+    display:flex; align-items:center;
+    background: var(--field);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    padding: 0 16px;
+    height: 52px;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .field-box:focus-within{
+    border-color: var(--accent);
+    background:#fff;
+    box-shadow: 0 0 0 4px rgba(15,107,76,0.08);
+  }
+  .field-box input{
+    flex:1;
+    border:none; outline:none; background:transparent;
+    font-family: inherit;
+    font-size: 16.5px;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    padding:0;
+    width:100%;
+    min-width: 0;
+  }
+  .field-box .unit{
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-60);
+    padding-left: 8px;
+    flex-shrink: 0;
+  }
+  #dp-field.hidden{ display:none; }
+
+  .divider{
+    height: 1px;
+    background: var(--line);
+    margin: 22px 0 22px;
+  }
+
+  /* result panel */
+  .result{
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-radius: 20px;
+    padding: 22px 20px 6px;
+  }
+  .result .total-label{
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-60);
+    margin-bottom: 5px;
+  }
+  .result .total{
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .result .total .cur{
+    font-size: 0.48em;
+    font-weight: 600;
+    color: var(--ink-60);
+    margin-left: 4px;
+  }
+  .row{
+    display:flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+    border-top: 1px solid rgba(15,107,76,0.12);
+    font-size: 13.5px;
+  }
+  .row span:first-child{ color: var(--ink-60); font-weight: 500; }
+  .row span:last-child{
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .y-hint{
+    display:flex;
+    justify-content:flex-end;
+    gap: 6px;
+    align-items: baseline;
+    margin-top: 12px;
+    padding: 0 2px;
+  }
+  .y-hint span:first-child{
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--ink-60);
+    opacity: .6;
+  }
+  .y-hint span:last-child{
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-60);
+    opacity: .6;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Share Button */
+  .btn-primary {
+    display: block;
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 16px;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 22px;
+    transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  /* Modal Styles */
+  .modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 18px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+  .modal.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .modal-card {
+    background: var(--card);
+    width: 100%;
+    max-width: 400px;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transform: translateY(15px);
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  }
+  .modal.active .modal-card { transform: translateY(0); }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .modal-header h3 {
+    margin: 0;
+    font-size: 17px;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 26px;
+    line-height: 1;
+    color: var(--ink-60);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .modal-close:hover {
+    color: var(--ink);
+  }
+
+  .modal-card textarea {
+    width: 100%;
+    height: 180px;
+    background: var(--field);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    resize: none;
+    outline: none;
+    margin-top: 8px;
+    margin-bottom: 16px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+  .btn-secondary {
+    background: var(--field);
+    color: var(--ink);
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .btn-secondary:hover { background: var(--line); }
+
+  @media (max-width: 360px){
+    .result .total{ font-size: 33px; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Калькулятор рассрочки</h1>
+
+  <div class="switch" id="switch">
+    <span class="switch-indicator"></span>
+    <button class="tab" data-mode="with">С первым взносом</button>
+    <button class="tab active" data-mode="without">Без взноса</button>
+  </div>
+
+  <div class="field">
+    <label for="cost">Стоимость товара</label>
+    <div class="field-box">
+      <input id="cost" type="text" inputmode="numeric" value="100.000">
+      <span class="unit">₽</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="months">Срок рассрочки (от 3 до 12 мес.)</label>
+    <div class="field-box">
+      <input id="months" type="number" min="3" max="12" value="6">
+      <span class="unit">мес.</span>
+    </div>
+  </div>
+
+  <div class="field hidden" id="dp-field">
+    <label for="dp">Первоначальный взнос (1/5 от общей суммы)</label>
+    <div class="field-box">
+      <input id="dp" type="text" inputmode="numeric" value="0">
+      <span class="unit">₽</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="result">
+    <div class="total-label">Итоговая стоимость</div>
+    <div class="total"><span id="out-total" data-val="0">0</span><span class="cur">₽</span></div>
+
+    <div class="row"><span>Первоначальный взнос</span><span id="out-dp" data-val="0">—</span></div>
+    <div class="row"><span>Ежемесячный платёж</span><span id="out-monthly" data-val="0" data-pay-months="0">—</span></div>
+    <div class="row"><span>Переплата в месяц</span><span id="out-overpay-month">—</span></div>
+    <div class="row"><span>Вся переплата</span><span id="out-overpay-total">—</span></div>
+
+    <div class="y-hint"><span>НАЦЕНКА</span><span id="out-y">0%</span></div>
+  </div>
+
+  <button class="btn-primary" onclick="openShare()">Поделиться расчётом</button>
+</div>
+
+<!-- Модальное окно "Поделиться" -->
+<div class="modal" id="shareModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Отправить расчёт</h3>
+      <button class="modal-close" onclick="closeShare()">&times;</button>
+    </div>
+    
+    <div class="field">
+      <label for="share-product">Название товара</label>
+      <div class="field-box" style="height: 44px;">
+        <input id="share-product" type="text" placeholder="Например: iPhone 15" oninput="updateShareText()">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="share-phone">Номер телефона</label>
+      <div class="field-box" style="height: 44px;">
+        <input id="share-phone" type="tel" placeholder="+7 (999) 000-00-00">
+      </div>
+    </div>
+
+    <textarea id="share-text" readonly></textarea>
+    
+    <div class="modal-actions">
+      <button class="btn-secondary" style="flex: 1.2;" onclick="copyShareText(this)">Скопировать</button>
+      <button class="btn-primary" style="margin-top:0; flex: 1;" onclick="shareWhatsApp()">Поделиться</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Округление ВВЕРХ до 50
+function ceil50(n) { return Math.ceil(n / 50) * 50; }
+
+// Сетка процентов со взносом (3 - 12 мес.)
+var RATES_WITH = {
+  3: 0.07,
+  4: 0.10,
+  5: 0.13,
+  6: 0.16,
+  7: 0.19,
+  8: 0.22,
+  9: 0.25,
+  10: 0.28,
+  11: 0.31,
+  12: 0.34
+};
+
+// Сетка процентов без взноса (3 - 12 мес.)
+var RATES_WITHOUT = {
+  3: 0.10,
+  4: 0.14,
+  5: 0.18,
+  6: 0.22,
+  7: 0.26,
+  8: 0.30,
+  9: 0.34,
+  10: 0.38,
+  11: 0.42,
+  12: 0.46
+};
+
+// Ограничение срока в диапазоне 3..12 месяцев
+function clampMonths(m) {
+  return Math.min(12, Math.max(3, m));
+}
+
+function getTotalRate(months, mode) {
+  var m = clampMonths(months);
+  return mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
+}
+
+// Первый взнос = 1/5 (20%) от ОБЩЕЙ суммы с наценкой
+function suggestDp(cost, months, mode) {
+  if (mode !== 'with') return 0;
+  var totalRate = getTotalRate(months, mode);
+  var baseTotal = cost * (1 + totalRate);
+  return ceil50(baseTotal * 0.2);
+}
+
+function calc(cost, months, mode, dp) {
+  var m = clampMonths(months);
+  var totalRate = getTotalRate(m, mode);
+  var baseTotal = cost * (1 + totalRate);
+
+  var blank = dp === null;
+  var suggestedDp = suggestDp(cost, m, mode);
+  var enteredDp = mode === 'with' ? (blank ? suggestedDp : dp) : 0;
+
+  if (enteredDp > baseTotal) enteredDp = baseTotal;
+
+  // Если со взносом, первый взнос идет как 1-й месяц -> остается (m - 1) платежей
+  var payMonths = mode === 'with' ? Math.max(1, m - 1) : m;
+
+  var remainingToPay = Math.max(0, baseTotal - enteredDp);
+  var basePayment = payMonths > 0 ? remainingToPay / payMonths : 0;
+  var monthly = ceil50(basePayment);
+
+  var total = enteredDp + (monthly * payMonths);
+  var overpayTotal = Math.max(0, total - cost);
+  var overpayMonth = m > 0 ? overpayTotal / m : 0;
+  var y = cost !== 0 ? overpayTotal / cost : 0;
+
+  return {
+    dp: enteredDp,
+    monthly: monthly,
+    payMonths: payMonths,
+    total: total,
+    overpayTotal: overpayTotal,
+    overpayMonth: overpayMonth,
+    y: y
+  };
+}
+
+// -------- formatting --------
+function money(n) {
+  return Math.round(n).toLocaleString('ru-RU').replace(/\u00A0/g, '.');
+}
+function digitsOnly(str) {
+  return (str || '').replace(/\D/g, '');
+}
+function readAmount(input) {
+  return Number(digitsOnly(input.value)) || 0;
+}
+function writeAmount(input, n) {
+  input.value = n > 0 ? money(n) : '0';
+}
+function bindThousands(input, onChange) {
+  input.addEventListener('input', function () {
+    var pos = input.selectionStart;
+    var before = input.value.length;
+    var raw = digitsOnly(input.value).replace(/^0+(?=\d)/, '');
+    input.value = raw === '' ? '' : money(Number(raw));
+    var diff = input.value.length - before;
+    input.setSelectionRange(pos + diff, pos + diff);
+    onChange();
+  });
+}
+
+// -------- wiring --------
+var costEl = document.getElementById('cost');
+var monthsEl = document.getElementById('months');
+var dpEl = document.getElementById('dp');
+var dpField = document.getElementById('dp-field');
+var switchEl = document.getElementById('switch');
+var tabButtons = document.querySelectorAll('.tab');
+
+var mode = 'without'; // Запуск в режиме "Без взноса"
+var dpTouched = true; // Учитываем ноль по умолчанию для этого режима
+
+function refreshDpPlaceholder() {
+  if (dpTouched) return;
+  var m = clampMonths(Number(monthsEl.value) || 3);
+  writeAmount(dpEl, suggestDp(readAmount(costEl), m, mode));
+}
+
+function render() {
+  var cost = readAmount(costEl);
+  var rawMonths = Number(monthsEl.value) || 3;
+  var months = clampMonths(rawMonths);
+  var dp = dpTouched ? readAmount(dpEl) : null;
+  var r = calc(cost, months, mode, dp);
+
+  // Вывод данных
+  document.getElementById('out-total').textContent = money(r.total);
+  document.getElementById('out-dp').textContent = money(r.dp) + ' ₽';
+  document.getElementById('out-monthly').textContent = money(r.monthly) + ' ₽ × ' + r.payMonths;
+  document.getElementById('out-overpay-month').textContent = money(r.overpayMonth) + ' ₽';
+  document.getElementById('out-overpay-total').textContent = money(r.overpayTotal) + ' ₽';
+  document.getElementById('out-y').textContent = (r.y * 100).toLocaleString('ru-RU', { maximumFractionDigits: 1 }) + '%';
+
+  // Сохраняем данные для попапа Share
+  document.getElementById('out-total').dataset.val = money(r.total);
+  document.getElementById('out-dp').dataset.val = money(r.dp);
+  document.getElementById('out-monthly').dataset.val = money(r.monthly);
+  document.getElementById('out-monthly').dataset.payMonths = r.payMonths;
+  document.getElementById('cost').dataset.val = money(cost);
+  
+  if (document.getElementById('shareModal').classList.contains('active')) {
+    updateShareText();
+  }
+}
+
+tabButtons.forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    mode = btn.dataset.mode;
+    tabButtons.forEach(function (b) { b.classList.toggle('active', b === btn); });
+    switchEl.classList.toggle('mode-without', mode === 'without');
+    
+    if (mode === 'with') {
+      dpTouched = false;
+      monthsEl.value = 3;
+    } else {
+      writeAmount(dpEl, 0);
+      dpTouched = true;
+      monthsEl.value = 6;
+    }
+    
+    dpField.classList.toggle('hidden', mode === 'without');
+    refreshDpPlaceholder();
+    render();
+  });
+});
+
+bindThousands(costEl, function () { refreshDpPlaceholder(); render(); });
+bindThousands(dpEl, function () { dpTouched = true; render(); });
+monthsEl.addEventListener('input', function () { refreshDpPlaceholder(); render(); });
+monthsEl.addEventListener('blur', function () {
+  monthsEl.value = clampMonths(Number(monthsEl.value) || 3);
+  refreshDpPlaceholder();
+  render();
+});
+
+// Инициализация интерфейса
+switchEl.classList.add('mode-without');
+render();
+
+// -------- логика окна поделиться --------
+function updateShareText() {
+  var product = document.getElementById('share-product').value || 'Товар';
+  var cost = document.getElementById('cost').dataset.val || '0';
+  var dp = document.getElementById('out-dp').dataset.val || '0';
+  var months = clampMonths(Number(document.getElementById('months').value) || 3);
+  var monthly = document.getElementById('out-monthly').dataset.val || '0';
+  var payMonths = document.getElementById('out-monthly').dataset.payMonths || months;
+  var total = document.getElementById('out-total').dataset.val || '0';
+
+  var footerNote = mode === 'with'
+    ? `⚡ Взнос (${dp} ₽) идёт как 1-й месяц + ${payMonths} мес. по ${monthly} ₽.`
+    : `⚡ Платёж округлён вверх до 50₽, итог = ${monthly} ₽ × ${payMonths} мес.`;
+
+  var text = `🏷️ *РАССРОЧКА: ${product}*\n\n` +
+             `💵 Стоимость товара: ${cost} ₽\n` +
+             `🏦 Первоначальный взнос: ${dp} ₽\n` +
+             `📆 Срок: ${months} мес.\n` +
+             `✅ *Ежемесячный платёж:* ${monthly} ₽ (× ${payMonths} мес.)\n` +
+             `💰 *ИТОГОВАЯ СУММА:* ${total} ₽\n\n` +
+             footerNote;
+             
+  document.getElementById('share-text').value = text;
+}
+
+function openShare() {
+  document.getElementById('shareModal').classList.add('active');
+  updateShareText();
+}
+
+function closeShare() {
+  document.getElementById('shareModal').classList.remove('active');
+}
+
+function copyShareText(btn) {
+  var textarea = document.getElementById('share-text');
+  textarea.select();
+  textarea.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(textarea.value).then(() => {
+    var oldText = btn.textContent;
+    btn.textContent = 'Скопировано!';
+    setTimeout(() => { btn.textContent = oldText; }, 2000);
+  }).catch(err => {
+    console.error('Ошибка копирования: ', err);
+  });
+}
+
+function shareWhatsApp() {
+  var phoneInput = document.getElementById('share-phone').value;
+  var phone = digitsOnly(phoneInput); 
+  var text = document.getElementById('share-text').value;
+  var encodedText = encodeURIComponent(text);
+  
+  var url = 'https://wa.me/' + phone + '?text=' + encodedText;
+  
+  window.open(url, '_blank');
+  closeShare();
+}
+</script>
+</body>
+</html>
