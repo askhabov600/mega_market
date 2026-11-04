@@ -392,9 +392,6 @@
 </div>
 
 <script>
-// Округление ВВЕРХ до 50
-function ceil50(n) { return Math.ceil(n / 50) * 50; }
-
 // Сетка процентов со взносом (3 - 12 мес.)
 var RATES_WITH = {
   3: 0.07,
@@ -438,7 +435,7 @@ function suggestDp(cost, months, mode) {
   if (mode !== 'with') return 0;
   var totalRate = getTotalRate(months, mode);
   var baseTotal = cost * (1 + totalRate);
-  return ceil50(baseTotal * 0.2);
+  return Math.round(baseTotal * 0.2);
 }
 
 function calc(cost, months, mode, dp) {
@@ -456,10 +453,9 @@ function calc(cost, months, mode, dp) {
   var payMonths = mode === 'with' ? Math.max(1, m - 1) : m;
 
   var remainingToPay = Math.max(0, baseTotal - enteredDp);
-  var basePayment = payMonths > 0 ? remainingToPay / payMonths : 0;
-  var monthly = ceil50(basePayment);
+  var monthly = payMonths > 0 ? remainingToPay / payMonths : 0;
 
-  var total = enteredDp + (monthly * payMonths);
+  var total = baseTotal;
   var overpayTotal = Math.max(0, total - cost);
   var overpayMonth = m > 0 ? overpayTotal / m : 0;
   var y = cost !== 0 ? overpayTotal / cost : 0;
@@ -590,7 +586,7 @@ function updateShareText() {
 
   var footerNote = mode === 'with'
     ? `⚡ Взнос (${dp} ₽) идёт как 1-й месяц + ${payMonths} мес. по ${monthly} ₽.`
-    : `⚡ Платёж округлён вверх до 50₽, итог = ${monthly} ₽ × ${payMonths} мес.`;
+    : `⚡ Оплата равными частями: ${monthly} ₽ × ${payMonths} мес.`;
 
   var text = `🏷️ *РАССРОЧКА: ${product}*\n\n` +
              `💵 Стоимость товара: ${cost} ₽\n` +
