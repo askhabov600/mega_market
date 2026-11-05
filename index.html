@@ -336,7 +336,7 @@
   </div>
 
   <div class="field hidden" id="dp-field">
-    <label for="dp">Первоначальный взнос</label>
+    <label for="dp">Первоначальный взнос (1/5 от общей суммы)</label>
     <div class="field-box">
       <input id="dp" type="text" inputmode="numeric" value="0">
       <span class="unit">₽</span>
@@ -392,15 +392,32 @@
 </div>
 
 <script>
-// Таблицы процентов
+// Сетка процентов со взносом (3 - 12 мес.)
 var RATES_WITH = {
-  3: 0.07, 4: 0.10, 5: 0.13, 6: 0.16, 7: 0.19,
-  8: 0.22, 9: 0.25, 10: 0.28, 11: 0.31, 12: 0.34
+  3: 0.07,
+  4: 0.10,
+  5: 0.13,
+  6: 0.16,
+  7: 0.19,
+  8: 0.22,
+  9: 0.25,
+  10: 0.28,
+  11: 0.31,
+  12: 0.34
 };
 
+// Сетка процентов без взноса (3 - 12 мес.)
 var RATES_WITHOUT = {
-  3: 0.10, 4: 0.14, 5: 0.18, 6: 0.22, 7: 0.26,
-  8: 0.30, 9: 0.34, 10: 0.38, 11: 0.42, 12: 0.46
+  3: 0.10,
+  4: 0.14,
+  5: 0.18,
+  6: 0.22,
+  7: 0.26,
+  8: 0.30,
+  9: 0.34,
+  10: 0.38,
+  11: 0.42,
+  12: 0.46
 };
 
 // Ограничение срока в диапазоне 3..12 месяцев
@@ -408,45 +425,53 @@ function clampMonths(m) {
   return Math.min(12, Math.max(3, m));
 }
 
-// Рекомендуемый первый взнос = ровно 1/5 (20%) от стоимости товара
+function getTotalRate(months, mode) {
+  var m = clampMonths(months);
+  return mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
+}
+
+// Первый взнос по умолчанию = 1/5 (20%) от общей суммы с базовой наценкой
 function suggestDp(cost, months, mode) {
-  return mode === 'with' ? Math.round(cost * 0.2) : 0;
+  if (mode !== 'with') return 0;
+  var totalRate = getTotalRate(months, mode);
+  var baseTotal = cost * (1 + totalRate);
+  return Math.round(baseTotal * 0.2);
 }
 
 function calc(cost, months, mode, dp) {
   var m = clampMonths(months);
-  
-  // Ставка из таблицы строго по сроку
-  var rate = mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
+  var baseRate = getTotalRate(m, mode);
 
   var blank = dp === null;
   var suggestedDp = suggestDp(cost, m, mode);
   var enteredDp = mode === 'with' ? (blank ? suggestedDp : dp) : 0;
 
-  if (enteredDp > cost) enteredDp = cost;
+  var baseTotalForDpCheck = cost * (1 + baseRate);
+  if (enteredDp > baseTotalForDpCheck) enteredDp = baseTotalForDpCheck;
 
-  // 1. Сначала полная наценка на всю стоимость товара
-  var totalWithMarkup = cost * (1 + rate);
-
-  // 2. Плавное уменьшение наценки пропорционально остатку долга при увеличении взноса
-  var effectiveMarkup = totalWithMarkup - cost;
+  // ЛОГИКА ПЛАВНОГО УМЕНЬШЕНИЯ ПРОЦЕНТА НАЦЕНКИ:
+  // Если режим со взносом и стоимость больше 0, смотрим какой процент от итоговой суммы составляет взнос.
+  // Если взнос больше стандартных 20% (0.2), ставка начинает плавно снижаться (но не ниже 3%).
+  var activeRate = baseRate;
   if (mode === 'with' && cost > 0) {
-    var loanShare = Math.max(0, (cost - enteredDp) / cost);
-    effectiveMarkup = effectiveMarkup * loanShare;
+    var dpRatio = enteredDp / baseTotalForDpCheck;
+    if (dpRatio > 0.2) {
+      // Каждый процент превышения взноса над 20% срезает часть наценки (с коэффициентом плавности 0.3)
+      var discount = (dpRatio - 0.2) * 0.3;
+      activeRate = Math.max(0.03, baseRate - discount);
+    }
   }
 
-  var finalTotal = cost + effectiveMarkup;
+  // Общая сумма с учётом (возможно уменьшенной) ставки
+  var baseTotal = cost * (1 + activeRate);
 
-  // 3. Вычитаем первоначальный взнос из итоговой суммы
-  var remainingToPay = Math.max(0, finalTotal - enteredDp);
-
-  // 4. Первый взнос идет как первый месяц -> остается (m - 1) платежей
+  // Если со взносом, первый взнос идет как 1-й месяц -> остается (m - 1) платежей
   var payMonths = mode === 'with' ? Math.max(1, m - 1) : m;
 
-  // 5. Ежемесячный платеж БЕЗ округления (точный математический расчёт)
+  var remainingToPay = Math.max(0, baseTotal - enteredDp);
   var monthly = payMonths > 0 ? remainingToPay / payMonths : 0;
 
-  var total = enteredDp + (monthly * payMonths);
+  var total = baseTotal;
   var overpayTotal = Math.max(0, total - cost);
   var overpayMonth = m > 0 ? overpayTotal / m : 0;
   var y = cost !== 0 ? overpayTotal / cost : 0;
@@ -511,7 +536,7 @@ function render() {
   var dp = dpTouched ? readAmount(dpEl) : null;
   var r = calc(cost, months, mode, dp);
 
-  // Вывод данных (теперь без принудительного округления ежемесячного платежа)
+  // Вывод данных (без принудительного округления платежей, точный математический расчёт)
   document.getElementById('out-total').textContent = money(r.total);
   document.getElementById('out-dp').textContent = money(r.dp) + ' ₽';
   document.getElementById('out-monthly').textContent = money(r.monthly) + ' ₽ × ' + r.payMonths;
@@ -570,10 +595,14 @@ function updateShareText() {
   var product = document.getElementById('share-product').value || 'Товар';
   var cost = document.getElementById('cost').dataset.val || '0';
   var dp = document.getElementById('out-dp').dataset.val || '0';
-  var months = clampMonths(Number(document.getElementById('months').value) || 3);
+  var months = clampMonths(Number(monthsEl.value) || 3);
   var monthly = document.getElementById('out-monthly').dataset.val || '0';
   var payMonths = document.getElementById('out-monthly').dataset.payMonths || months;
   var total = document.getElementById('out-total').dataset.val || '0';
+
+  var footerNote = mode === 'with'
+    ? `⚡ Взнос (${dp} ₽) идёт как 1-й месяц + ${payMonths} мес. по ${monthly} ₽.`
+    : `⚡ Оплата равными частями: ${monthly} ₽ × ${payMonths} мес.`;
 
   var text = `🏷️ *РАССРОЧКА: ${product}*\n\n` +
              `💵 Стоимость товара: ${cost} ₽\n` +
