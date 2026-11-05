@@ -126,12 +126,6 @@
     padding-left: 8px;
     flex-shrink: 0;
   }
-  .dp-hint {
-    font-size: 11.5px;
-    color: var(--ink-60);
-    margin-top: 5px;
-    padding-left: 4px;
-  }
   #dp-field.hidden{ display:none; }
 
   .divider{
@@ -347,7 +341,6 @@
       <input id="dp" type="text" inputmode="numeric" value="0">
       <span class="unit">₽</span>
     </div>
-    <div class="dp-hint" id="dp-min-hint">Минимальный взнос (1/5): 0 ₽</div>
   </div>
 
   <div class="divider"></div>
@@ -415,16 +408,16 @@ var RATES_WITH = {
 
 // Минимальный порог процента при увеличении первого взноса сверху базового
 var RATES_WITH_MIN = {
-  3: 0.04,  // с 7% до 4%
-  4: 0.05,  // с 10% до 5%
-  5: 0.08,  // с 13% до 8%
-  6: 0.10,  // с 16% до 10%
-  7: 0.12,  // с 19% до 12%
-  8: 0.14,  // с 22% до 14%
-  9: 0.16,  // с 25% до 16%
-  10: 0.18, // с 28% до 18%
-  11: 0.20, // с 31% до 20%
-  12: 0.22  // с 34% до 22%
+  3: 0.04,
+  4: 0.05,
+  5: 0.08,
+  6: 0.10,
+  7: 0.12,
+  8: 0.14,
+  9: 0.16,
+  10: 0.18,
+  11: 0.20,
+  12: 0.22
 };
 
 // Сетка процентов без взноса (3 - 12 мес.)
@@ -470,22 +463,15 @@ function getEffectiveRate(cost, months, mode, enteredDp) {
 
   var minDp = suggestDp(cost, m, 'with');
 
-  // Если взнос не превышает базовую 1/5 часть, процент не уменьшается
   if (enteredDp <= minDp) {
     return baseRate;
   }
 
-  // Максимальный порог взноса, при котором достигается минимальный процент (80% от цены товара)
   var maxDpForDiscount = Math.max(minDp + 1, cost * 0.8);
-
-  // Доля перевыполнения взноса от 0 до 1
   var progress = (enteredDp - minDp) / (maxDpForDiscount - minDp);
   progress = Math.min(1, Math.max(0, progress));
 
-  // Плавное снижение ставки от базовой к минимальной
   var effectiveRate = baseRate - progress * (baseRate - minRate);
-
-  // Округляем ставку до десятых долей процента (например, 0.055 -> 5.5%), чтобы числа были ровными
   return Math.round(effectiveRate * 1000) / 1000;
 }
 
@@ -512,7 +498,6 @@ function calc(cost, months, mode, dp) {
 
   return {
     dp: enteredDp,
-    minDp: suggestedDp,
     monthly: monthly,
     payMonths: payMonths,
     total: total,
@@ -552,7 +537,6 @@ var costEl = document.getElementById('cost');
 var monthsEl = document.getElementById('months');
 var dpEl = document.getElementById('dp');
 var dpField = document.getElementById('dp-field');
-var dpMinHint = document.getElementById('dp-min-hint');
 var switchEl = document.getElementById('switch');
 var tabButtons = document.querySelectorAll('.tab');
 
@@ -571,9 +555,6 @@ function render() {
   var months = clampMonths(rawMonths);
   var dp = dpTouched ? readAmount(dpEl) : null;
   var r = calc(cost, months, mode, dp);
-
-  // Подсказка минимального взноса
-  dpMinHint.textContent = '' + money(r.minDp) + '';
 
   // Вывод данных
   document.getElementById('out-total').textContent = money(r.total);
