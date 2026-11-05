@@ -419,9 +419,8 @@ function suggestDp(cost, months, mode) {
 function calc(cost, months, mode, dp) {
   var m = clampMonths(months);
   
-  // Базовая ставка из вашей таблицы
-  var baseRate = mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
-  var rate = baseRate;
+  // Базовая ставка из вашей таблицы строго по сроку
+  var rate = mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
 
   var blank = dp === null;
   var suggestedDp = suggestDp(cost, m, mode);
@@ -429,15 +428,7 @@ function calc(cost, months, mode, dp) {
 
   if (enteredDp > cost) enteredDp = cost;
 
-  // Если режим со взносом, плавно уменьшаем процент при увеличении взноса (как во втором коде, с коэффициентом 0.5)
-  if (mode === 'with' && cost > 0) {
-    var dpRatio = enteredDp / cost; // какую часть от стоимости составляет взнос
-    // Если взнос больше минимальных 20% (0.2), ставка плавно снижается
-    var discountKoef = Math.max(0, (dpRatio - 0.2) * 0.5); 
-    rate = Math.max(0.03, baseRate - discountKoef); // не даем упасть ниже 3%
-  }
-
-  // 1. Сначала полная наценка на всю стоимость товара по (возможно скорректированной) ставке
+  // 1. Сначала полная наценка на всю стоимость товара по фиксированной табличной ставке
   var totalWithMarkup = cost * (1 + rate);
 
   // 2. Вычитаем первоначальный взнос из итоговой суммы с наценкой
