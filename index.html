@@ -328,7 +328,7 @@
   </div>
 
   <div class="field">
-    <label for="months">Срок рассрочки (от 3 до 12 мес.)</label>
+    <label for="months">Срок рассрочки</label>
     <div class="field-box">
       <input id="months" type="number" min="3" max="12" value="6">
       <span class="unit">мес.</span>
@@ -336,7 +336,7 @@
   </div>
 
   <div class="field hidden" id="dp-field">
-    <label for="dp">Первоначальный взнос (1/5 от общей суммы)</label>
+    <label for="dp">Первоначальный взнос</label>
     <div class="field-box">
       <input id="dp" type="text" inputmode="numeric" value="0">
       <span class="unit">₽</span>
@@ -354,7 +354,7 @@
     <div class="row"><span>Переплата в месяц</span><span id="out-overpay-month">—</span></div>
     <div class="row"><span>Вся переплата</span><span id="out-overpay-total">—</span></div>
 
-    <div class="y-hint"><span>НАЦЕНКА</span><span id="out-y">0%</span></div>
+    <div class="y-hint"><span></span><span id="out-y">0%</span></div>
   </div>
 
   <button class="btn-primary" onclick="openShare()">Поделиться расчётом</button>
@@ -430,7 +430,7 @@ function getTotalRate(months, mode) {
   return mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
 }
 
-// Первый взнос по умолчанию = 1/5 (20%) от общей суммы с базовой наценкой
+// Первый взнос = 1/5 (20%) от ОБЩЕЙ суммы с наценкой
 function suggestDp(cost, months, mode) {
   if (mode !== 'with') return 0;
   var totalRate = getTotalRate(months, mode);
@@ -440,38 +440,31 @@ function suggestDp(cost, months, mode) {
 
 function calc(cost, months, mode, dp) {
   var m = clampMonths(months);
-  var baseRate = getTotalRate(m, mode);
+  var totalRate = getTotalRate(m, mode);
+  var baseTotal = cost * (1 + totalRate);
 
   var blank = dp === null;
   var suggestedDp = suggestDp(cost, m, mode);
   var enteredDp = mode === 'with' ? (blank ? suggestedDp : dp) : 0;
 
-  var baseTotalForDpCheck = cost * (1 + baseRate);
-  if (enteredDp > baseTotalForDpCheck) enteredDp = baseTotalForDpCheck;
+  if (enteredDp > baseTotal) enteredDp = baseTotal;
 
-  // ЛОГИКА ПЛАВНОГО УМЕНЬШЕНИЯ ПРОЦЕНТА НАЦЕНКИ:
-  // Если режим со взносом и стоимость больше 0, смотрим какой процент от итоговой суммы составляет взнос.
-  // Если взнос больше стандартных 20% (0.2), ставка начинает плавно снижаться (но не ниже 3%).
-  var activeRate = baseRate;
+  // Теперь наценка уменьшается строго пропорционально остатку долга (никаких резких обвалов)
+  var effectiveMarkup = (baseTotal - cost);
   if (mode === 'with' && cost > 0) {
-    var dpRatio = enteredDp / baseTotalForDpCheck;
-    if (dpRatio > 0.2) {
-      // Каждый процент превышения взноса над 20% срезает часть наценки (с коэффициентом плавности 0.3)
-      var discount = (dpRatio - 0.2) * 0.3;
-      activeRate = Math.max(0.03, baseRate - discount);
-    }
+    var loanShare = Math.max(0, (baseTotal - enteredDp) / baseTotal);
+    effectiveMarkup = effectiveMarkup * loanShare;
   }
 
-  // Общая сумма с учётом (возможно уменьшенной) ставки
-  var baseTotal = cost * (1 + activeRate);
+  var finalTotal = cost + effectiveMarkup;
 
-  // Если со взносом, первый взнос идет как 1-й месяц -> остается (m - 1) платежей
+  // Если со взносом, первый взнос идет как первый месяц -> остается (m - 1) платежей
   var payMonths = mode === 'with' ? Math.max(1, m - 1) : m;
 
-  var remainingToPay = Math.max(0, baseTotal - enteredDp);
+  var remainingToPay = Math.max(0, finalTotal - enteredDp);
   var monthly = payMonths > 0 ? remainingToPay / payMonths : 0;
 
-  var total = baseTotal;
+  var total = finalTotal;
   var overpayTotal = Math.max(0, total - cost);
   var overpayMonth = m > 0 ? overpayTotal / m : 0;
   var y = cost !== 0 ? overpayTotal / cost : 0;
@@ -536,7 +529,7 @@ function render() {
   var dp = dpTouched ? readAmount(dpEl) : null;
   var r = calc(cost, months, mode, dp);
 
-  // Вывод данных (без принудительного округления платежей, точный математический расчёт)
+  // Вывод данных
   document.getElementById('out-total').textContent = money(r.total);
   document.getElementById('out-dp').textContent = money(r.dp) + ' ₽';
   document.getElementById('out-monthly').textContent = money(r.monthly) + ' ₽ × ' + r.payMonths;
