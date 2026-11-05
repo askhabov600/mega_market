@@ -392,9 +392,6 @@
 </div>
 
 <script>
-// Округление ВВЕРХ до 50
-function ceil50(n) { return Math.ceil(n / 50) * 50; }
-
 // Таблицы процентов
 var RATES_WITH = {
   3: 0.07, 4: 0.10, 5: 0.13, 6: 0.16, 7: 0.19,
@@ -411,15 +408,15 @@ function clampMonths(m) {
   return Math.min(12, Math.max(3, m));
 }
 
-// Рекомендуемый первый взнос = 1/5 (20%) от стоимости товара
+// Рекомендуемый первый взнос = ровно 1/5 (20%) от стоимости товара
 function suggestDp(cost, months, mode) {
-  return mode === 'with' ? ceil50(cost * 0.2) : 0;
+  return mode === 'with' ? Math.round(cost * 0.2) : 0;
 }
 
 function calc(cost, months, mode, dp) {
   var m = clampMonths(months);
   
-  // Ставка из вашей таблицы строго по сроку
+  // Ставка из таблицы строго по сроку
   var rate = mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
 
   var blank = dp === null;
@@ -428,7 +425,7 @@ function calc(cost, months, mode, dp) {
 
   if (enteredDp > cost) enteredDp = cost;
 
-  // 1. Полная стоимость с наценкой по таблице
+  // 1. Сначала полная наценка на всю стоимость товара
   var totalWithMarkup = cost * (1 + rate);
 
   // 2. Плавное уменьшение наценки пропорционально остатку долга при увеличении взноса
@@ -446,8 +443,8 @@ function calc(cost, months, mode, dp) {
   // 4. Первый взнос идет как первый месяц -> остается (m - 1) платежей
   var payMonths = mode === 'with' ? Math.max(1, m - 1) : m;
 
-  // 5. Ежемесячный платеж с округлением вверх до 50
-  var monthly = payMonths > 0 ? ceil50(remainingToPay / payMonths) : 0;
+  // 5. Ежемесячный платеж БЕЗ округления (точный математический расчёт)
+  var monthly = payMonths > 0 ? remainingToPay / payMonths : 0;
 
   var total = enteredDp + (monthly * payMonths);
   var overpayTotal = Math.max(0, total - cost);
@@ -514,7 +511,7 @@ function render() {
   var dp = dpTouched ? readAmount(dpEl) : null;
   var r = calc(cost, months, mode, dp);
 
-  // Вывод данных
+  // Вывод данных (теперь без принудительного округления ежемесячного платежа)
   document.getElementById('out-total').textContent = money(r.total);
   document.getElementById('out-dp').textContent = money(r.dp) + ' ₽';
   document.getElementById('out-monthly').textContent = money(r.monthly) + ' ₽ × ' + r.payMonths;
@@ -584,7 +581,7 @@ function updateShareText() {
              `📆 Срок: ${months} мес.\n` +
              `✅ *Ежемесячный платёж:* ${monthly} ₽ (× ${payMonths} мес.)\n` +
              `💰 *ИТОГОВАЯ СУММА:* ${total} ₽\n\n` +
-             `⚡ Платёж округлён вверх до 50₽, итог = взнос ${dp} ₽ + ${monthly} ₽ × ${payMonths} мес.`;
+             `⚡ Итог = взнос ${dp} ₽ + ${monthly} ₽ × ${payMonths} мес.`;
              
   document.getElementById('share-text').value = text;
 }
