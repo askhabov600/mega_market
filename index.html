@@ -573,7 +573,7 @@ function render() {
   var r = calc(cost, months, mode, dp);
 
   // Подсказка минимального взноса
-  dpMinHint.textContent = 'Базовый взнос (1/5): ' + money(r.minDp) + ' ₽';
+  dpMinHint.textContent = '' + money(r.minDp) + '';
 
   // Вывод данных
   document.getElementById('out-total').textContent = money(r.total);
