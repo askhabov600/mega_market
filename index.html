@@ -395,7 +395,7 @@
 // Округление ВВЕРХ до 50
 function ceil50(n) { return Math.ceil(n / 50) * 50; }
 
-// Ваши таблицы базовых процентов (со взносом и без)
+// Таблицы процентов
 var RATES_WITH = {
   3: 0.07, 4: 0.10, 5: 0.13, 6: 0.16, 7: 0.19,
   8: 0.22, 9: 0.25, 10: 0.28, 11: 0.31, 12: 0.34
@@ -411,7 +411,7 @@ function clampMonths(m) {
   return Math.min(12, Math.max(3, m));
 }
 
-// Рекомендуемый первый взнос = 1/5 от базовой стоимости товара (округлённый вверх до 50)
+// Рекомендуемый первый взнос = 1/5 (20%) от стоимости товара
 function suggestDp(cost, months, mode) {
   return mode === 'with' ? ceil50(cost * 0.2) : 0;
 }
@@ -419,7 +419,7 @@ function suggestDp(cost, months, mode) {
 function calc(cost, months, mode, dp) {
   var m = clampMonths(months);
   
-  // Базовая ставка из вашей таблицы строго по сроку
+  // Ставка из вашей таблицы строго по сроку
   var rate = mode === 'with' ? RATES_WITH[m] : RATES_WITHOUT[m];
 
   var blank = dp === null;
@@ -428,16 +428,25 @@ function calc(cost, months, mode, dp) {
 
   if (enteredDp > cost) enteredDp = cost;
 
-  // 1. Сначала полная наценка на всю стоимость товара по фиксированной табличной ставке
+  // 1. Полная стоимость с наценкой по таблице
   var totalWithMarkup = cost * (1 + rate);
 
-  // 2. Вычитаем первоначальный взнос из итоговой суммы с наценкой
-  var remainingToPay = Math.max(0, totalWithMarkup - enteredDp);
+  // 2. Плавное уменьшение наценки пропорционально остатку долга при увеличении взноса
+  var effectiveMarkup = totalWithMarkup - cost;
+  if (mode === 'with' && cost > 0) {
+    var loanShare = Math.max(0, (cost - enteredDp) / cost);
+    effectiveMarkup = effectiveMarkup * loanShare;
+  }
 
-  // 3. Первый взнос идет как первый месяц -> остается (m - 1) платежей
+  var finalTotal = cost + effectiveMarkup;
+
+  // 3. Вычитаем первоначальный взнос из итоговой суммы
+  var remainingToPay = Math.max(0, finalTotal - enteredDp);
+
+  // 4. Первый взнос идет как первый месяц -> остается (m - 1) платежей
   var payMonths = mode === 'with' ? Math.max(1, m - 1) : m;
 
-  // 4. Ежемесячный платеж с округлением вверх до 50
+  // 5. Ежемесячный платеж с округлением вверх до 50
   var monthly = payMonths > 0 ? ceil50(remainingToPay / payMonths) : 0;
 
   var total = enteredDp + (monthly * payMonths);
