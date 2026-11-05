@@ -328,7 +328,7 @@
   </div>
 
   <div class="field">
-    <label for="months">Срок рассрочки</label>
+    <label for="months">Срок рассрочки (от 3 до 12 мес.)</label>
     <div class="field-box">
       <input id="months" type="number" min="3" max="12" value="6">
       <span class="unit">мес.</span>
@@ -336,7 +336,7 @@
   </div>
 
   <div class="field hidden" id="dp-field">
-    <label for="dp">Первоначальный взнос</label>
+    <label for="dp">Первоначальный взнос (1/5 от общей суммы)</label>
     <div class="field-box">
       <input id="dp" type="text" inputmode="numeric" value="0">
       <span class="unit">₽</span>
@@ -354,7 +354,7 @@
     <div class="row"><span>Переплата в месяц</span><span id="out-overpay-month">—</span></div>
     <div class="row"><span>Вся переплата</span><span id="out-overpay-total">—</span></div>
 
-    <div class="y-hint"><span></span><span id="out-y">0%</span></div>
+    <div class="y-hint"><span>НАЦЕНКА</span><span id="out-y">0%</span></div>
   </div>
 
   <button class="btn-primary" onclick="openShare()">Поделиться расчётом</button>
@@ -449,22 +449,13 @@ function calc(cost, months, mode, dp) {
 
   if (enteredDp > baseTotal) enteredDp = baseTotal;
 
-  // Теперь наценка уменьшается строго пропорционально остатку долга (никаких резких обвалов)
-  var effectiveMarkup = (baseTotal - cost);
-  if (mode === 'with' && cost > 0) {
-    var loanShare = Math.max(0, (baseTotal - enteredDp) / baseTotal);
-    effectiveMarkup = effectiveMarkup * loanShare;
-  }
-
-  var finalTotal = cost + effectiveMarkup;
-
-  // Если со взносом, первый взнос идет как первый месяц -> остается (m - 1) платежей
+  // Если со взносом, первый взнос идет как 1-й месяц -> остается (m - 1) платежей
   var payMonths = mode === 'with' ? Math.max(1, m - 1) : m;
 
-  var remainingToPay = Math.max(0, finalTotal - enteredDp);
+  var remainingToPay = Math.max(0, baseTotal - enteredDp);
   var monthly = payMonths > 0 ? remainingToPay / payMonths : 0;
 
-  var total = finalTotal;
+  var total = baseTotal;
   var overpayTotal = Math.max(0, total - cost);
   var overpayMonth = m > 0 ? overpayTotal / m : 0;
   var y = cost !== 0 ? overpayTotal / cost : 0;
@@ -588,7 +579,7 @@ function updateShareText() {
   var product = document.getElementById('share-product').value || 'Товар';
   var cost = document.getElementById('cost').dataset.val || '0';
   var dp = document.getElementById('out-dp').dataset.val || '0';
-  var months = clampMonths(Number(monthsEl.value) || 3);
+  var months = clampMonths(Number(document.getElementById('months').value) || 3);
   var monthly = document.getElementById('out-monthly').dataset.val || '0';
   var payMonths = document.getElementById('out-monthly').dataset.payMonths || months;
   var total = document.getElementById('out-total').dataset.val || '0';
@@ -603,7 +594,7 @@ function updateShareText() {
              `📆 Срок: ${months} мес.\n` +
              `✅ *Ежемесячный платёж:* ${monthly} ₽ (× ${payMonths} мес.)\n` +
              `💰 *ИТОГОВАЯ СУММА:* ${total} ₽\n\n` +
-             `⚡ Итог = взнос ${dp} ₽ + ${monthly} ₽ × ${payMonths} мес.`;
+             footerNote;
              
   document.getElementById('share-text').value = text;
 }
